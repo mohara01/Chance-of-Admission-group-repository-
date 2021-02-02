@@ -1,0 +1,597 @@
+---
+title: "Chance of Admission - Final Report"
+author: "Rabab Mohamed, Yordanos Alemu, Kovenda Mbuale"
+date: "January 8 2021"
+output:
+  word_document: default
+  pdf_document: default
+  toc: yes
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+#Introduction:
+
+This report examines data on Graduate Admissions on 2019. The primary goal is to determine what factors are most predictive of Chance of Admit ( ranging from 0 to 1 ). The predictor  variables include GRE Scores ( out of 340 ), TOEFL Scores ( out of 120 ), University Rating ( out of 5 ), Statement of Purpose and Letter of Recommendation Strength ( out of 5 ), Undergraduate GPA ( out of 10 ), Research Experience ( either 0 or 1 ). There are 400 observations in the data set.
+
+Response variable(s) – Need at least 1. All must be continuous variables:
+  1. Chance of Admission
+
+Predictor variables – Need at least 5. Can be a mixture of continuous and categorical
+  1. GRE Scores ( out of 340 )
+  2. TOEFL Scores ( out of 120 )
+  3. University Rating ( out of 5 )
+  4. Statement of Purpose and Letter of Recommendation Strength ( out of 5 )
+  5. Undergraduate GPA ( out of 10 )
+  6. Research Experience ( either 0 or 1 )
+Column Names:
+  1. Research
+  2. CGPA
+  3. LOR
+  4. SOP
+  5. University Rating
+  6. TOEFL Score
+  7. GRE Score
+First, we will load the data.  These data have variables about students at a small liberal arts college.
+
+```{r}
+# Activate the Stat2Data package (must be installed first - one-time step)
+library(readr)
+#x <- na.omit(airquality)
+Admission_Predict_withMissingValues <- read_csv("Admission_Predict.csv")
+Admission_Predict <- na.omit(Admission_Predict_withMissingValues)
+```
+## Introduction
+
+## Exploratory Analysis
+
+```{r}
+# Check distribution of repsonse variable 
+attach (Admission_Predict)
+
+par (mfrow = c(1, 2))
+hist (`Chance of Admit`)
+boxplot (`Chance of Admit`, horizontal = T, xlab="`Chance of Admit`", main="Boxplot of Chance of Admit")
+```
+The distribution of `Chance of Admit` is left skewed. We will use residual analysis to guide the need for transformation later on in the report.
+
+From our exploratory analysis we saw that the variable chance of Admit is left skewed. Therefore we will try different transformations.
+```{r}
+admission_chance=(`Chance of Admit`)^2
+par (mfrow = c(1, 2))
+hist ((`Chance of Admit`)^2)
+boxplot (admission_chance, horizontal = T, xlab="(`Chance of Admit`)^2", main="Boxplot of Chance of Admit")
+
+```
+
+The distribution of (`Chance of Admit`)^2 is more symmetric. We will start by modeling `Chance of Admit` and then use the Box-Cox analysis to determine the most appropriate transformation.
+
+Distributions of the quantitative predictor variables:
+```{r}
+
+library (ggplot2)
+library (tidyr)
+
+ggplot(gather(Admission_Predict [, 2:8]), aes(value)) + 
+  geom_histogram(bins = 8) + 
+  facet_wrap(~key, scales = 'free_x')
+
+```
+
+The predictor variables are not either extremely right or left skewed. We think the variables Research and University Rating are categorical variables but we will use box plot to see weather they have an influence on the response variable which is chance of admission.
+
+
+```{r}
+# Scatterplot matrix of columns 
+pairs (Admission_Predict[,2:9], col=`University Rating`)
+
+```
+
+The Exploratory Analysis shows that all our variables are quantitative except University Rating and Research. 
+
+```{r}
+# Table of pairwise correlations
+cormat = cor (Admission_Predict [,2:9], use = "complete.obs") 
+round (cormat, 2)
+```
+
+The pairs plot shows all our predictor variables have a linear relationship with our response variable Chance of Admit except for Research. This will be examined further via residual analysis. 
+
+The three predictors GRE Score, TOEFL Score and CGPA are highly correlated with each other (r = 0.83 to 0.84). However, Research and Letter of Recommendation are not highly correlated with the other predictor variables.
+
+Since CGPA has the highest correlation with chance of admission, both GRE Score and the TOEFL score has the same correlation to CGPA which means students may not need to take both tests since their correlation to CGPA is the same with r = 0.83. This statement is only an assumption we will confirm this and also recognize other issues of multicollinearity with correlated predictors later. 
+#(self - ref ----See chapter 3)
+
+
+## Simple Linear Regression
+We start with a simple linear regression of GPA and admission_chance
+## Is there a relationship between GPA and admission_chance?
+
+
+```{r fig.height=3.5, fig.width=4}
+plot ( `Chance of Admit` ~ CGPA, data=Admission_Predict)
+fit0 = lm (`Chance of Admit` ~ CGPA, data= Admission_Predict)
+summary (fit0)
+confint (fit0)
+abline (fit0)
+```
+
+With 95% confidence, Chance of Admit increases between 19.7 and 22.0 % for every CGPA point.
+
+Residual analysis:
+
+```{r fig.height=3.5, fig.width=7}
+par (mfrow = c(1,2))
+plot (fit0, which=1:2)
+```
+
+From the Residual Vs Fitted we can see that there is no problem with the linearity but there is non-constant variance. And from the Normal Q-Q we can see there is a problem with the normal distribution. We will try a square transformation for Chance of Admit and CGPA. 
+
+## Is there a relationship between CGPA and square(Chance of Admit)? 
+
+```{r fig.height=3.5, fig.width=4}
+sqrChanceOfAdm = (`Chance of Admit`)^2
+plot ( sqrChanceOfAdm ~ CGPA, data=Admission_Predict)
+fit1 = lm (sqrChanceOfAdm ~ CGPA, data= Admission_Predict)
+summary (fit1)
+confint (fit1)
+abline (fit1)
+```
+
+The plot of sqrChanceOfAdm vs CGPA shows a more linear relationship. square(CGPA) explains 78.74% of the total variation in sqrChanceOfAdm with a residual standard error of 0.09278 sqrChanceOfAdm.
+
+Residual analysis:
+
+```{r fig.height=3.5, fig.width=7}
+par (mfrow = c(1,2))
+plot (fit1, which=1:2)
+```
+
+From the Residual Vs Fitted we can see that the linearity of the model has gotten worst then the previous untransformed model and the constant variance has not improved either. And from the Normal Q-Q we can see the problem with the normal distribution has been improved. 
+
+The transformed model deosnt show much improvement from the untransforemed model except for the improvement in normal distribution but if you look at the symmetry of the transformed Chance of Admit you can see the improvement much better. We will use the Box-Cox analysis to determine the most appropriate transformation for our model.
+
+
+ 
+### First Order Model
+
+Next, we fit a first-order linear model will all seven predictors.
+## fit 1
+```{r}
+order1_fit1 = lm (`Chance of Admit` ~ `GRE Score`+`TOEFL Score`+ `University Rating`+ SOP + LOR + CGPA + Research)
+  
+summary (order1_fit1)
+anova (order1_fit1)
+```
+ 
+The analysis of variance table suggests that all the predictors are significant because they each have a p-value less than 0.05. The coefficient tests suggest that all of the predictors are significant except for Statement of Purpose (SOP) and University Rating. The R-squared is 0.8035, with adjusted R-squared = 0.8, which indicate that most of the variability in Chance of Admission (Chance of Admit) is being explained by this model.  The residual standard error is  0.06378.
+
+# Trying to Fix the first insignificant variable University Rating
+
+```{r}
+# New code chunk with residuals vs. `University Rating`
+par (mfrow = c(1, 2))
+plot (`University Rating`[!is.na(`Chance of Admit`)], order1_fit1$residuals, ylab="order1_fit1 Residuals", xlab="`University Rating`")
+lines (lowess (`University Rating`[!is.na(`Chance of Admit`)], order1_fit1$residuals))
+boxplot (order1_fit1$residuals ~ `University Rating`, ylab="order1_fit1 Residuals",
+xlab="`University Rating`")
+ 
+```
+
+Since the variable University Rating appears to have a linear relationship with Chance of Admission, changing University Rating will not improve the first-order model.
+
+# Trying to Fix our second insignificant variable SOP
+
+```{r}
+# New code chunk with residuals vs. SOP
+par (mfrow = c(1, 2))
+plot (SOP[!is.na(`Chance of Admit`)], order1_fit1$residuals, ylab="order1_fit1 Residuals", xlab="SOP")
+lines (lowess (SOP[!is.na(`Chance of Admit`)], order1_fit1$residuals))
+boxplot (order1_fit1$residuals ~ SOP, ylab="order1_fit1 Residuals",
+xlab="SOP")
+
+```
+
+Since the variable Statement of Purpose (SOP) appears to have a linear relationship with Chance of Admission, changing Statement of Purpose (SOP) will not improve the first-order model.
+
+## Residual Analysis of the first order model
+
+```{r}
+par (mfrow = c(1, 2))
+plot (order1_fit1, which = c(1, 2))
+ 
+```
+
+```{r}
+boxplot (order1_fit1$residuals, ylab="order1_fit1 Residuals")
+plot (order1_fit1$fitted.values,`Chance of Admit`, main="Actual vs. Fitted", ylab="Residuals")
+abline (0, 1, col="red")
+
+```
+
+Residual analysis shows linearity but non-constant variance, along with some left skewness in the residual distribution. This could be corrected by transforming the response variable.
+
+## Box-Cox Analysis
+
+Box-Cox analysis is one way to choose a response variable transformation from the set of power transformations. It can also just help choose between log and square root.
+```{r}
+library ("MASS")
+boxcox (order1_fit1)
+ 
+```
+
+The Box-Cox analysis suggests a power of 2 transformation, The value, 2, is just inside the 95% confidence interval, so we will use a square transformation.
+
+```{r}
+squareChance_Admit = (`Chance of Admit`)^2
+order2_fit1 = lm (squareChance_Admit ~ `GRE Score`+`TOEFL Score`+ `University Rating`+ SOP + LOR + CGPA + Research)
+summary (order2_fit1)
+
+anova (order2_fit1)
+```
+
+University Rating is now more significant to the model the p value went from 0.23150 to 0.030033, however Statement of Purpose is still insignificant to the model and we might eliminate it to improve the model. We cant compare the Residual standard error because we changed scales. The Multiple R-squared increased by 0.03.
+
+## Residual analysis of the square-transformed first-order model
+
+```{r}
+par (mfrow = c(1, 2))
+plot (order2_fit1, which = c(1, 2))
+ 
+```
+
+```{r}
+boxplot (order2_fit1$residuals, horizontal = T, xlab="order2_fit1 Residuals")
+plot (order2_fit1$fitted.values,squareChance_Admit, main="Actual vs. Fitted", ylab="Residuals")
+abline (0, 1, col="red")
+
+```
+
+The residual analysis of the square-transformed model looks fairly like a fairly good improvement from the first order model. There are some residuals at both ends of the scale that are somewhat more spread out compared to a normal distribution. The plot of observed vs fitted squareChance_Admit looks good.
+
+## Backward elimination method - Manual
+
+We will remove Statement of Purpose (SOP) because its the only one that is insignificant to the square-transformed model.
+
+```{r}
+order2_fit2 = lm (squareChance_Admit ~ `GRE Score`+`TOEFL Score`+ `University Rating` + LOR + CGPA + Research)
+summary (order2_fit2)
+
+anova (order2_fit2)
+```
+
+
+```{r}
+par (mfrow = c(1, 2))
+plot (order2_fit2, which = c(1, 2))
+ 
+```
+
+We do not see any obvious change in the model after dropping Statement of Purpose (SOP). So we will use ANOVA between the two fits:
+
+```{r}
+anova (order2_fit1, order2_fit2)
+```
+
+The p-value for the hypothesis that the two fits are the same is 0.7123. Thus, we conclude that the second fit is not significantly different from the first fit. Therefore removing the Statement of Purpose from the model doesn't improve the model, however, removing it gives us a simpler model so we will do that.
+
+## Changing the order of the predictor variables in the model
+We noticed from our earlier correlation matrix that TOEFL Score and GRE Score are highly correlated to CGPA, we know that this means that the order in we put them into the model affects their Sum of Squares.
+
+## Determining Final Order of variables in the model
+
+Predictors              Individual SS       Individual R Squared    
+---------------------- -----------------  ----------------------- 
+CGPA                    12.6889             0.7874         
+GRE Score               10.8206             0.6715        
+TOEFL Score             10.543              0.6542         
+Research                5.2035              0.3229
+University Rating       8.7150              0.5408
+LOR                     7.3745              0.4576
+
+
+We take the variable CGPA with the highest R-squared value to be first in the model. However to determine which variable comes next in the model, we need to not only to consider the high R-Square values that follow the first but also consider how much of their individual Sum of Squares is lost to CGPA being first in the model since we that CGPA is going to take 12.6889 Sum of Squares of the 13.4253 Total Sum of Squares.
+
+If we re-arrange the table in terms of the set criteria it looks as follows (The number corresponds to the variable's determined position in the coming re-arranged model).
+
+Individual SS And Individual R Squared 
+1. 12.6889 CGPA 0.7874
+2. 10.8206 GRE Score 0.6715
+3. 10.543 TOEFL Score 0.6542
+4. 8.7150 University Rating 0.5408
+5. 7.3745 LOR 0.4576
+6. 5.2035 Research 0.3229
+
+This leads us to create a an order of the variables in the following order: 1. CGPA 2. GRE Score 3. TOEFL Score 4. University Rating 5. LOR 6. Research.
+
+```{r}
+order2_fit3 = lm (squareChance_Admit ~ CGPA + `GRE Score` + `TOEFL Score` + `University Rating` + LOR + Research )
+summary (order2_fit3)
+
+anova (order2_fit3)
+
+```
+
+## Initial Interpretation of the Model
+
+The predictor variables explain 83.06 % of the change in the square(chance of admission). We think that the intercept does not provide significant information so we won't comment on it. For an increase of 1 CGPA point your chance of admission increases by 16% and coming from a University that is rated 1 point higher than a fellow applicant gives you 1.28% higher chance of admission. It is interesting to see that an applicant's Letter of Recommendation (LOR) takes precedence over both of the required Standardized test scores, since an increase of 1 point in the score of an applicant's Letter of Recommendation (LOR) increases their chance of admission by 2.6% while a 1 point increase in the standardized test scores only gives an applicant 0.26% for GRE Score and 0.42% for TOEFL Score. Doing research happens to be the second most important contributor to an applicant's chance of admission after CGPA.
+
+## Apply a model selection to the first order model 
+
+# First order model
+
+```{r}
+part2_fit1 = lm (`Chance of Admit` ~ `GRE Score`+`TOEFL Score`+ `University Rating`+ SOP + LOR + CGPA + Research)
+summary (part2_fit1)
+anova (part2_fit1)
+```
+
+# Re- fit first order model
+
+```{r}
+par (mfrow = c(1, 2))
+plot (part2_fit1, which = c(1, 2))
+ 
+```
+
+# Stepwise Regression
+
+```{r}
+part2_fit2=step(part2_fit1)
+```
+
+
+```{r}
+par (mfrow = c(1, 2))
+plot (part2_fit2, which = c(1, 2))
+ 
+```
+
+The Residual vs Fitted plot shows good linearity and constant variables. The normal Q-Q plot aligns with normal distribution with a left tail.
+
+# Centered Interaction effects
+
+```{r}
+CGPA.c=CGPA-mean(CGPA)
+GreScore.c=`GRE Score`-mean(`GRE Score`)
+ToeflScore.c=`TOEFL Score`-mean(`TOEFL Score`)
+LOR.c=LOR-mean(LOR)
+Research.c=Research-mean(Research)
+
+part2_fit3= lm ( `Chance of Admit`~ (CGPA.c + GreScore.c + ToeflScore.c + LOR.c + Research.c)^2 )
+summary (part2_fit3)
+```
+
+# Stepwise by AIC
+
+```{r}
+part2_fit_AIC = step (part2_fit3, direction="both")
+summary (part2_fit_AIC)
+```
+
+# Stepwise by BIC
+
+```{r}
+part2_fit_BIC = step (part2_fit3, direction="both", k=log (part2_fit3$rank + part2_fit3$df.residual))
+summary (part2_fit_BIC)
+```
+
+
+## Results from AIC & BIC
+
+```{r}
+summary (part2_fit_AIC)
+summary (part2_fit_BIC)
+```
+
+
+```{r}
+anova(part2_fit_AIC,part2_fit_BIC)
+```
+
+We conclude from the ANOVA table that the two models are not similar since the p-value of the f-test is 0.0454 which is less than 0.05 and therefore we reject the null hypothesis which says that there is no statistical difference between the two models.
+
+The the Adjusted R-squared value and the Residual Standard error for both the AIC & BIC Model are as follows:
+
+Model                   Adjusted R-square   Residual Standard error    
+---------------------- -----------------  --------------------------
+AIC                     0.8023              0.0634         
+BIC                     0.8002              0.06374       
+
+
+The AIC model is the best model because it has a higher Adjusted R-squared value and a lower Residual Standard error.
+
+## Residual Diagnostics for Final Model
+
+```{r}
+#par (mfrow = c(1, 2))
+plot (part2_fit_AIC)
+ 
+```
+
+1. The linearity assumption is reasonable in the Residual vs. Fitted plot, however there is a non constant spread. 
+2. The Q-Q plot shows that there is some deviation from the lower tale, this might affect the normality assumption.
+3. The scale location plot also shows a decrease in the residuals variance with the decrease of fitted values.
+4. The Residuals vs Leverage plot does show some concerns, and there are two leverage points and three potential outliers.  
+
+# Box plot of residuals
+
+```{r}
+boxplot(resid(part2_fit_AIC), ylab="part2_fit_AIC Residuals")
+ 
+
+```
+
+The box-plot of residuals looks symmetric and there some outliers on the lower tale  #(Ask professor about box-plot Question )and three in the upper.
+
+#b. Plot response variable vs fitted values, add a line with intercept 0 and slope 1
+
+```{r}
+plot(`Chance of Admit`~part2_fit_AIC$fitted.values)
+abline(0,1)
+```
+
+The plot of the response variable chance of Admit vs.fitted values shows a good fit of the model to the data.
+
+
+#Variance Inflation
+```{r}
+
+
+car::vif(part2_fit_AIC)
+```
+
+All of the VIF are less than 5, which means that multicollinearity is low in our model.
+
+#Influence analysis
+Save the residuals and the leverage values in the data frame
+
+```{r}
+Admission_Predict$Residual = round (part2_fit_AIC$residuals, 4)
+Admission_Predict$leverage = round (hatvalues(part2_fit_AIC), 4)
+Admission_Predict$rstudent = round (rstudent(part2_fit_AIC), 4)
+
+```
+
+Pull out the cases with high leverage or a large residual
+
+```{r}
+
+high.levg.resd = Admission_Predict [Admission_Predict$leverage > 2*(part2_fit_AIC$rank) / (part2_fit_AIC$rank + part2_fit_AIC$df.residual) |
+                               abs (part2_fit_AIC$residuals) > 30 , ]
+
+high.levg.resd[order(-high.levg.resd$rstudent),][c(1,9:12)]
+```
+
+The three highest leverage points bigger than the Leverage Cutoff value for 2(k+1)/n which is at 0.04 for this data. Row 59 has the highest leverage at 0.187 followed by row 48 at 0.154 and row 79 at 0.0811. These points are the highest from the mean
+
+```{r}
+high.rstudntLowEnd = Admission_Predict [Admission_Predict$rstudent < -3.0 & is.na(Admission_Predict$rstudent) == FALSE, ]
+high.rstudntLowEnd[order(high.rstudntLowEnd$rstudent),][c(1,9:12)]
+```
+
+The three lowest studentized residual points lower than the -3.0 are Row 10 has the lowest studentized residual at -4.21 followed by row 93 at -3.72 and row 65 at -3.59 These points have the highest left tail deviation from the Normal distribution. It's important to point out only 7 observations have an studentized residual lower than -3.0
+
+```{r}
+high.rstudntHighEnd = Admission_Predict [Admission_Predict$rstudent > 2.0, ]
+high.rstudntHighEnd[order(-high.rstudntHighEnd$rstudent),][c(1,9:12)]
+```
+
+There are no observations that have studentized residuals higher than 3.0.
+
+```{r}
+# Residual plots  
+
+par (mfrow=c(2,2))
+plot (part2_fit_AIC, col= (Admission_Predict$leverage > 0.06)+1)
+
+```
+
+```{r}
+library(olsrr)
+ols_plot_resid_lev(part2_fit_AIC, print_plot = TRUE)
+```
+
+This plot illustrates that there are no points that have both high leverage and have studentized residuals lower than -3 or higher than 3. And it shows as indicated earlier that there are 7 outlier points with studentized residuals lower than -3 namely row 10,93,65,66, 11, 60 & 375.
+
+Now we will see whether any of those outliers are influential points using Cook's Distance.
+
+```{r}
+Admission_Predict$cookd = round (cooks.distance(part2_fit_AIC), 4)
+```
+
+```{r}
+high.cooksDveryInf = Admission_Predict [Admission_Predict$cookd >1.0 , ]
+high.cooksDModerateInf = Admission_Predict [Admission_Predict$cookd >0.5 , ]
+highest.cooksDinData = Admission_Predict [Admission_Predict$cookd >0.03 , ]
+```
+
+There are no cook's distance bigger than 0.5. Therefore no influential points.
+
+```{r}
+highest.cooksDinData[order(-highest.cooksDinData$cookd),][c(1,9:13)]
+```
+
+```{r}
+ols_plot_cooksd_bar(part2_fit_AIC, print_plot = TRUE)
+```
+
+```{r}
+# Residual plots  
+
+#par (mfrow=c(1,2))
+plot (part2_fit_AIC, which=4, col= (Admission_Predict$leverage > 0.06)+1)
+
+```
+
+The all the outlier rows with studentized residuals less than -3.0 have a cook's distance less than 0.5 and therefore neither of them are influential. Row 375 has the highest cook's distance at 0.0393.
+
+Our residual and influential analysis shows no outliers that are influential points therefore our model does not need any transformation.
+
+
+
+f. Interpretation
+i. Meaning/interpretation of regression parameters
+1. Qualitative, directional statements can be acceptable
+2. Note: Parameter estimates of individual predictor variables that are involved in an interaction effect or a quadratic effect are not interpret able – Plot and summarize the interaction or quadratic effect from the plot, instead
+ii. Make some example response predictions with confidence intervals and interpret
+
+
+```{r}
+summary(part2_fit_AIC) 
+```
+
+The intercept which is 0.7243959 does not have any meaning because a student does not apply they will not have any chance of admission.
+
+#Conclusions
+
+Our model produces the following formula for admitting students
+
+Our final model is:
+$$ChanceOfAdmission = 0.7243959+ 0.1208875 * CGPA.c+ 0.0015541* GreScore.c + 0.0031474 * ToeflScore.c + 0.0228900 * LOR.c + 0.0300528 * Research.c - 0.0010408 (CGPA.c:GreScore.c) + 0.0379682 (CGPA.c:Research.c)$$
+
+For every increase in 1 CGPA point the chance of admission for a student would increase by 12.08875%. Students who do research have a 3% higher chance of admission than students who do not. In addition, a point increase in a student's LOR (Letter of Recommendation) increases their chance of admission by 2.29%. This is surprisingly higher than a point's increase in any of the standardized test scores. A point increase in a student's TOEFL increases their chance of admission by 0.31% which is 0.16% than a point increase in GRE Score, that makes the TOEFL score more important for Grad School admission than a GRE score, that is surprising because TOEFL is just a language competency test. 
+
+The final model has Adjusted R square= 0.8023, which means that 80% of the variation on chance of admission is explained by the model. The residual standard error is 0.0634. 
+
+#ii. Make some example response predictions with confidence intervals and interpret those results.
+
+```{r}
+
+predch= predict (part2_fit_AIC, interval = 'confidence')
+head(predch)
+```
+
+```{r}
+Admission_Predict$pred.ChanceOfAdmission = predch[,1]
+Admission_Predict$pred.lower = predch[,2]
+Admission_Predict$pred.upper = predch[,3]
+
+
+
+head(Admission_Predict)
+```
+
+```{r}
+head(Admission_Predict)
+```
+
+
+```{r}
+Admission_Predict[c(115,19,47,66,96,375,215),c(1,9,14:16)]
+```
+
+```{r}
+Admission_Predict$in.interval= ifelse (Admission_Predict$pred.lower <= Admission_Predict$pred.ChanceOfAdmission &
+                                       Admission_Predict$pred.ChanceOfAdmission <= Admission_Predict$pred.upper,1,0)
+mean(Admission_Predict$in.interval)
+```
+
+Among the seven example Serial NO whose prediction are shown above, all the predicted chance of admission fall between the lower and upper prediction. However, among all of the Serial NO in the data set, 100% have prediction intervals that contain the observed serial NO.We will expect 100%.
+
